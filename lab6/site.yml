@@ -1,0 +1,40 @@
+---
+- name: Configure monitoring server
+  hosts: monitoring
+  become: true
+  roles:
+    - docker
+    - prometheus
+    - grafana
+    - loki
+
+- name: Configure application server
+  hosts: app
+  become: true
+  roles:
+    - docker
+  tasks:
+    - name: Create app directory
+      file:
+        path: /opt/spring-boot-demo
+        state: directory
+        mode: '0755'
+
+    - name: Copy spring-boot application
+      copy:
+        src: spring-boot-demo/
+        dest: /opt/spring-boot-demo/
+        mode: '0755'
+
+    - name: Build and run spring-boot application
+      docker_container:
+        name: spring-boot-demo
+        image: openjdk:11
+        state: started
+        restart_policy: always
+        ports:
+          - "8080:8080"
+        volumes:
+          - /opt/spring-boot-demo:/app
+        working_dir: /app
+        command: "./gradlew bootRun" 
