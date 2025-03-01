@@ -1,0 +1,23 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for openvpn
+
+# Основные настройки OpenVPN
+openvpn_port: 1194
+openvpn_proto: udp
+openvpn_network: "10.8.0.0"
+openvpn_netmask: "255.255.255.0"
+
+# DNS серверы для клиентов
+openvpn_dns_servers:
+  - "8.8.8.8"
+  - "8.8.4.4"
+
+# Настройки безопасности
+openvpn_cipher: "AES-256-CBC"
+openvpn_auth: "SHA256"
+
+# Пути к файлам
+openvpn_server_config_dir: "/etc/openvpn/server"
+openvpn_easy_rsa_dir: "/etc/openvpn/easy-rsa"
+openvpn_client_config_dir: "/etc/openvpn"
