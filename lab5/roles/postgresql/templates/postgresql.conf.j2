@@ -1,0 +1,28 @@
+# -----------------------------
+# PostgreSQL configuration file
+# -----------------------------
+
+# CONNECTIONS AND AUTHENTICATION
+listen_addresses = '{{ postgresql_listen_addresses }}'
+port = {{ postgresql_port }}
+max_connections = {{ postgresql_max_connections }}
+
+# RESOURCE USAGE
+shared_buffers = {{ postgresql_shared_buffers }}
+
+# WRITE-AHEAD LOG
+wal_level = replica
+max_wal_senders = 10
+wal_keep_size = 1GB
+
+# REPLICATION
+{% if postgresql_is_master %}
+# Master configuration
+hot_standby = off
+{% else %}
+# Replica configuration
+hot_standby = on
+{% endif %}
+
+# DATA DIRECTORY
+data_directory = '{{ postgresql_data_dir }}' 
