@@ -1,0 +1,21 @@
+---
+roles:
+  - name: docker
+    src: https://github.com/zdarovayrodi/ansible-role-docker.git
+    scm: git
+    version: main
+
+  - name: prometheus
+    src: https://github.com/zdarovayrodi/ansible-role-prometheus.git
+    scm: git
+    version: main
+
+  - name: grafana
+    src: https://github.com/zdarovayrodi/ansible-role-grafana.git
+    scm: git
+    version: main
+
+  - name: loki
+    src: https://github.com/zdarovayrodi/ansible-role-loki.git
+    scm: git
+    version: main 
