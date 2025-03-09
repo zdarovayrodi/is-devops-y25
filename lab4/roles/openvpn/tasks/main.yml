@@ -1,0 +1,177 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for openvpn
+
+- name: Install required packages
+  apt:
+    name:
+      - openvpn
+      - easy-rsa
+    state: present
+    update_cache: yes
+
+- name: Create OpenVPN configuration directory
+  file:
+    path: /etc/openvpn/server
+    state: directory
+    mode: '0755'
+
+- name: Check if certificates exist
+  stat:
+    path: "{{ item }}"
+  register: cert_files
+  with_items:
+    - /etc/openvpn/easy-rsa/pki/ca.crt
+    - /etc/openvpn/easy-rsa/pki/issued/server.crt
+    - /etc/openvpn/easy-rsa/pki/private/server.key
+    - /etc/openvpn/easy-rsa/pki/dh.pem
+    - /etc/openvpn/easy-rsa/pki/issued/client.crt
+    - /etc/openvpn/easy-rsa/pki/private/client.key
+
+- name: Remove existing easy-rsa directory
+  file:
+    path: /etc/openvpn/easy-rsa
+    state: absent
+  when: cert_files.results | map(attribute='stat.exists') | select('equalto', false) | list | length > 0
+
+- name: Make easy-rsa directory
+  command: make-cadir /etc/openvpn/easy-rsa
+  args:
+    creates: /etc/openvpn/easy-rsa/vars
+  when: cert_files.results | map(attribute='stat.exists') | select('equalto', false) | list | length > 0
+
+- name: Initialize PKI
+  command: 
+    cmd: ./easyrsa init-pki
+    chdir: /etc/openvpn/easy-rsa
+  args:
+    creates: /etc/openvpn/easy-rsa/pki
+  when: cert_files.results | map(attribute='stat.exists') | select('equalto', false) | list | length > 0
+
+- name: Build CA
+  command:
+    cmd: ./easyrsa --batch build-ca nopass
+    chdir: /etc/openvpn/easy-rsa
+  args:
+    creates: /etc/openvpn/easy-rsa/pki/ca.crt
+  when: not cert_files.results[0].stat.exists
+
+- name: Generate server key
+  command:
+    cmd: ./easyrsa --batch gen-req server nopass
+    chdir: /etc/openvpn/easy-rsa
+  args:
+    creates: /etc/openvpn/easy-rsa/pki/private/server.key
+  when: not cert_files.results[2].stat.exists
+
+- name: Sign server certificate
+  command:
+    cmd: ./easyrsa --batch sign-req server server
+    chdir: /etc/openvpn/easy-rsa
+  args:
+    creates: /etc/openvpn/easy-rsa/pki/issued/server.crt
+  when: not cert_files.results[1].stat.exists
+
+- name: Generate client key
+  command:
+    cmd: ./easyrsa --batch gen-req client nopass
+    chdir: /etc/openvpn/easy-rsa
+  args:
+    creates: /etc/openvpn/easy-rsa/pki/private/client.key
+  when: not cert_files.results[5].stat.exists
+
+- name: Sign client certificate
+  command:
+    cmd: ./easyrsa --batch sign-req client client
+    chdir: /etc/openvpn/easy-rsa
+  args:
+    creates: /etc/openvpn/easy-rsa/pki/issued/client.crt
+  when: not cert_files.results[4].stat.exists
+
+- name: Generate DH parameters
+  command:
+    cmd: ./easyrsa gen-dh
+    chdir: /etc/openvpn/easy-rsa
+  args:
+    creates: /etc/openvpn/easy-rsa/pki/dh.pem
+  when: not cert_files.results[3].stat.exists
+
+- name: Copy server certificates and keys
+  copy:
+    src: "/etc/openvpn/easy-rsa/pki/{{ item.src }}"
+    dest: "/etc/openvpn/server/{{ item.dest }}"
+    remote_src: yes
+    force: no
+  with_items:
+    - { src: 'ca.crt', dest: 'ca.crt' }
+    - { src: 'issued/server.crt', dest: 'server.crt' }
+    - { src: 'private/server.key', dest: 'server.key' }
+    - { src: 'dh.pem', dest: 'dh.pem' }
+
+- name: Copy client certificates and keys
+  copy:
+    src: "/etc/openvpn/easy-rsa/pki/{{ item.src }}"
+    dest: "/etc/openvpn/{{ item.dest }}"
+    remote_src: yes
+    force: no
+  with_items:
+    - { src: 'ca.crt', dest: 'ca.crt' }
+    - { src: 'issued/client.crt', dest: 'client.crt' }
+    - { src: 'private/client.key', dest: 'client.key' }
+
+- name: Generate server configuration
+  template:
+    src: server.conf.j2
+    dest: /etc/openvpn/server/server.conf
+  notify: restart openvpn
+
+- name: Read CA certificate
+  slurp:
+    src: /etc/openvpn/ca.crt
+  register: ca_cert
+  changed_when: false
+
+- name: Read client certificate
+  slurp:
+    src: /etc/openvpn/client.crt
+  register: client_cert
+  changed_when: false
+
+- name: Read client key
+  slurp:
+    src: /etc/openvpn/client.key
+  register: client_key
+  changed_when: false
+
+- name: Generate client configuration
+  template:
+    src: client.ovpn.j2
+    dest: "/etc/openvpn/client.ovpn"
+    force: no
+
+- name: Check if OpenVPN is running
+  shell: "ps aux | grep '[o]penvpn.*server.conf' || true"
+  register: openvpn_check
+  changed_when: false
+
+- name: Start OpenVPN server
+  command:
+    cmd: openvpn --config /etc/openvpn/server/server.conf --daemon
+  when: openvpn_check.stdout == ""
+  changed_when: openvpn_check.stdout == ""
+
+- name: Create OpenVPN service
+  file:
+    path: /etc/systemd/system/openvpn@server.service
+    state: link
+    src: /lib/systemd/system/openvpn@.service
+    force: yes
+  when: ansible_service_mgr == "systemd"
+
+- name: Enable and start OpenVPN service
+  systemd:
+    name: openvpn@server
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  when: ansible_service_mgr == "systemd"

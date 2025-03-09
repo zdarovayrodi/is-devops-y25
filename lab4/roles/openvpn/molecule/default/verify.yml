@@ -1,0 +1,44 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Check if OpenVPN is installed
+      command: which openvpn
+      register: openvpn_check
+      changed_when: false
+      failed_when: openvpn_check.rc != 0
+
+    - name: Verify OpenVPN configuration files exist
+      stat:
+        path: "{{ item }}"
+      register: config_files
+      failed_when: not config_files.stat.exists
+      with_items:
+        - /etc/openvpn/server/server.conf
+        - /etc/openvpn/server/ca.crt
+        - /etc/openvpn/server/server.crt
+        - /etc/openvpn/server/server.key
+        - /etc/openvpn/server/dh.pem
+        - /etc/openvpn/client.ovpn
+
+    - name: Check if OpenVPN service is running
+      service:
+        name: openvpn@server
+        state: started
+      register: openvpn_service
+      failed_when: not openvpn_service.status.ActiveState == "active"
+      when: ansible_virtualization_type != 'docker'
+
+    - name: Check if OpenVPN port is listening
+      wait_for:
+        port: "{{ openvpn_port | default(1194) }}"
+        state: started
+        timeout: 5
+      when: ansible_virtualization_type != 'docker'
+
+    - name: Verify client configuration format
+      command: openvpn --config /etc/openvpn/client.ovpn --verb 0 --show-ciphers
+      register: config_verify
+      changed_when: false
+      failed_when: config_verify.rc != 0 

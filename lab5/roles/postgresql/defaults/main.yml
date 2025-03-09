@@ -1,0 +1,21 @@
+---
+# Префикс для всех переменных
+postgresql_version: "14"
+postgresql_data_dir: "/var/lib/postgresql/{{ postgresql_version }}/main"
+postgresql_bin_path: "/usr/lib/postgresql/{{ postgresql_version }}/bin"
+postgresql_config_path: "/etc/postgresql/{{ postgresql_version }}/main"
+
+# Настройки для создания баз данных и пользователей
+postgresql_databases: []
+postgresql_users: []
+
+# Настройки для streaming репликации
+postgresql_is_master: false
+postgresql_replica_user: "replicator"
+postgresql_replica_password: "strong_password"
+
+# Базовые настройки PostgreSQL
+postgresql_listen_addresses: "*"
+postgresql_port: 5432
+postgresql_max_connections: 100
+postgresql_shared_buffers: "128MB"

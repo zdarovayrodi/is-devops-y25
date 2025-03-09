@@ -1,0 +1,27 @@
+---
+- name: Install and configure OpenVPN server
+  hosts: all
+  become: true
+  
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+  
+  roles:
+    - role: openvpn
+      vars:
+        openvpn_port: 1194
+        openvpn_proto: udp
+        openvpn_network: "10.8.0.0"
+        openvpn_netmask: "255.255.255.0"
+  
+  post_tasks:
+    - name: Copy client configuration to playbook directory
+      fetch:
+        src: /etc/openvpn/client.ovpn
+        dest: "{{ playbook_dir }}/client.ovpn"
+        flat: yes
+      when: ansible_virtualization_type != 'docker' 
