@@ -1,0 +1,11 @@
+---
+docker_packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg-agent
+  - software-properties-common
+
+container_image: timurbabs/django:latest
+container_name: django-app
+container_port: 8000 

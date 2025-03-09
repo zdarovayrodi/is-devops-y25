@@ -1,0 +1,6 @@
+---
+- name: Setup docker & launch application
+  hosts: app
+  become: yes
+  roles:
+    - docker

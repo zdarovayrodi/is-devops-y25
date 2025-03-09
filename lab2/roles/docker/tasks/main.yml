@@ -1,0 +1,53 @@
+---
+- name: Install packages
+  apt:
+    name: "{{ docker_packages }}"
+    state: present
+    update_cache: yes
+
+- name: Add GPG docker key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add docker repository
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+    state: present
+
+- name: Install Docker
+  apt:
+    name: docker-ce
+    state: present
+    update_cache: yes
+
+- name: Install Python Docker SDK
+  apt:
+    name: python3-docker
+    state: present
+
+- name: Add vagrant user to docker group
+  user:
+    name: vagrant
+    groups: docker
+    append: yes
+
+- name: Pull Docker image
+  docker_image:
+    name: "{{ container_image }}"
+    source: pull
+    force_source: yes
+
+- name: Stop existing container
+  docker_container:
+    name: "{{ container_name }}"
+    state: absent
+
+- name: Start Docker container
+  docker_container:
+    name: "{{ container_name }}"
+    image: "{{ container_image }}"
+    state: started
+    ports:
+      - "{{ container_port }}:{{ container_port }}"
+    restart_policy: always 
