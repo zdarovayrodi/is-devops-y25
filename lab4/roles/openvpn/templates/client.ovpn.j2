@@ -1,0 +1,33 @@
+client
+dev tun
+proto {{ openvpn_proto }}
+remote {{ ansible_host }} {{ openvpn_port }}
+
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+
+# Настройки безопасности
+remote-cert-tls server
+cipher {{ openvpn_cipher }}
+auth {{ openvpn_auth }}
+tls-client
+tls-version-min 1.2
+tls-cipher TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384
+
+# Уровень логирования
+verb 3
+
+# Встроенные сертификаты и ключи
+<ca>
+{{ ca_cert['content'] | b64decode }}
+</ca>
+
+<cert>
+{{ client_cert['content'] | b64decode }}
+</cert>
+
+<key>
+{{ client_key['content'] | b64decode }}
+</key> 
