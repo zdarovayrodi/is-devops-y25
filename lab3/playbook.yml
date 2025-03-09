@@ -1,0 +1,12 @@
+---
+- name: Setup docker & launch application
+  hosts: app
+  become: yes
+  roles:
+    - docker
+
+- name: Setup Nginx
+  hosts: web
+  become: yes
+  roles:
+    - nginx
